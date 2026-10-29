@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calendario de lanzamientos</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Segoe UI", sans-serif;
+      color: #172a32;
+      background: #f3f6f2;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; }
+    header {
+      padding: 2rem clamp(1.25rem, 5vw, 5rem);
+      color: #f8fbf7;
+      background: #174b45;
+    }
+    header p { margin: 0 0 .4rem; color: #b7d5c7; }
+    h1 { margin: 0; font-size: clamp(1.8rem, 4vw, 3rem); }
+    main { max-width: 1000px; margin: 0 auto; padding: 2rem 1.25rem; }
+    form { display: flex; gap: .75rem; max-width: 620px; margin-bottom: 2rem; }
+    input, button { min-height: 2.8rem; border-radius: 4px; font: inherit; }
+    input { flex: 1; min-width: 0; padding: 0 .8rem; border: 1px solid #aebdb6; background: white; }
+    button { padding: 0 1rem; border: 0; color: white; background: #bd4d32; cursor: pointer; }
+    button:hover { background: #9e3b25; }
+    .month { margin: 0 0 1.75rem; }
+    h2 { padding-bottom: .5rem; border-bottom: 2px solid #c8d6ce; font-size: 1.2rem; }
+    .release { display: grid; grid-template-columns: 7rem 1fr auto; gap: 1rem; align-items: center; padding: .8rem 0; border-bottom: 1px solid #dce4df; }
+    .date { color: #42645c; font-variant-numeric: tabular-nums; }
+    .title { font-weight: 600; }
+    .status { color: #42645c; font-size: .9rem; }
+    .status.subscribed { color: #bd4d32; font-weight: 600; }
+    #message { color: #5b6d67; }
+    @media (max-width: 540px) {
+      form { flex-direction: column; }
+      .release { grid-template-columns: 1fr auto; gap: .25rem .75rem; }
+      .date { grid-column: 1 / -1; }
+      .status { text-align: right; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <p>PLATAFORMA DE SUSCRIPCIONES</p>
+    <h1>Calendario de lanzamientos</h1>
+  </header>
+  <main>
+    <form id="filter-form">
+      <input id="email" type="email" placeholder="Filtrar por correo suscrito" aria-label="Correo electrónico">
+      <button type="submit">Consultar calendario</button>
+    </form>
+    <div id="calendar" aria-live="polite"><p id="message">Cargando lanzamientos...</p></div>
+  </main>
+  <script>
+    const calendar = document.querySelector("#calendar");
+    const form = document.querySelector("#filter-form");
+    const emailInput = document.querySelector("#email");
+
+    async function loadCalendar(email = "") {
+      calendar.replaceChildren();
+      const message = document.createElement("p");
+      message.id = "message";
+      message.textContent = "Cargando lanzamientos...";
+      calendar.append(message);
+
+      const query = email ? `?email=${encodeURIComponent(email)}` : "";
+      try {
+        const response = await fetch(`/api/calendario${query}`);
+        if (!response.ok) throw new Error("No se pudo cargar el calendario.");
+        const months = await response.json();
+        calendar.replaceChildren();
+        if (Object.keys(months).length === 0) {
+          message.textContent = "Todavía no hay lanzamientos registrados.";
+          calendar.append(message);
+          return;
+        }
+
+        for (const [month, releases] of Object.entries(months)) {
+          const section = document.createElement("section");
+          section.className = "month";
+          const heading = document.createElement("h2");
+          heading.textContent = month;
+          section.append(heading);
+
+          for (const release of releases) {
+            const row = document.createElement("article");
+            row.className = "release";
+            const date = document.createElement("time");
+            date.className = "date";
+            date.dateTime = release.fecha_lanzamiento;
+            date.textContent = new Intl.DateTimeFormat("es", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${release.fecha_lanzamiento}T00:00:00Z`));
+            const title = document.createElement("span");
+            title.className = "title";
+            title.textContent = `${release.titulo_entrega} · Entrega ${release.entrega_numero}`;
+            const status = document.createElement("span");
+            status.className = `status${release.usuario_suscrito ? " subscribed" : ""}`;
+            status.textContent = email ? (release.usuario_suscrito ? "Suscrito" : "No suscrito") : "";
+            row.append(date, title, status);
+            section.append(row);
+          }
+          calendar.append(section);
+        }
+      } catch (error) {
+        message.textContent = error.message;
+        calendar.replaceChildren(message);
+      }
+    }
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      loadCalendar(emailInput.value.trim());
+    });
+
+    loadCalendar();
+  </script>
+</body>
+</html>
