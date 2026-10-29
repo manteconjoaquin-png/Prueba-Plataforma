@@ -52,6 +52,11 @@ def crear_coleccion(
     return nueva_coleccion
 
 
+@router.get("/colecciones", response_model=list[ColeccionResponse])
+def listar_colecciones(db: Session = Depends(get_db)) -> list[Coleccion]:
+    return db.query(Coleccion).order_by(Coleccion.nombre.asc()).all()
+
+
 @router.post("/lanzamientos", response_model=LanzamientoResponse)
 def crear_lanzamiento(
     lanzamiento: LanzamientoCreate,

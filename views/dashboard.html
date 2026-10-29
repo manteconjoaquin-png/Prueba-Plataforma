@@ -3,115 +3,319 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Calendario de lanzamientos</title>
+  <meta name="theme-color" content="#102d46">
+  <title>Calendario Colectivo de Lanzamientos</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   <style>
-    :root {
-      color-scheme: light;
-      font-family: "Segoe UI", sans-serif;
-      color: #172a32;
-      background: #f3f6f2;
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; }
-    header {
-      padding: 2rem clamp(1.25rem, 5vw, 5rem);
-      color: #f8fbf7;
-      background: #174b45;
-    }
-    header p { margin: 0 0 .4rem; color: #b7d5c7; }
-    h1 { margin: 0; font-size: clamp(1.8rem, 4vw, 3rem); }
-    main { max-width: 1000px; margin: 0 auto; padding: 2rem 1.25rem; }
-    form { display: flex; gap: .75rem; max-width: 620px; margin-bottom: 2rem; }
-    input, button { min-height: 2.8rem; border-radius: 4px; font: inherit; }
-    input { flex: 1; min-width: 0; padding: 0 .8rem; border: 1px solid #aebdb6; background: white; }
-    button { padding: 0 1rem; border: 0; color: white; background: #bd4d32; cursor: pointer; }
-    button:hover { background: #9e3b25; }
-    .month { margin: 0 0 1.75rem; }
-    h2 { padding-bottom: .5rem; border-bottom: 2px solid #c8d6ce; font-size: 1.2rem; }
-    .release { display: grid; grid-template-columns: 7rem 1fr auto; gap: 1rem; align-items: center; padding: .8rem 0; border-bottom: 1px solid #dce4df; }
-    .date { color: #42645c; font-variant-numeric: tabular-nums; }
-    .title { font-weight: 600; }
-    .status { color: #42645c; font-size: .9rem; }
-    .status.subscribed { color: #bd4d32; font-weight: 600; }
-    #message { color: #5b6d67; }
-    @media (max-width: 540px) {
-      form { flex-direction: column; }
-      .release { grid-template-columns: 1fr auto; gap: .25rem .75rem; }
-      .date { grid-column: 1 / -1; }
-      .status { text-align: right; }
+    :root { --ink: #172b3a; --muted: #647789; --line: #dce4eb; --surface: #fff; }
+    body { color: var(--ink); font-family: "Segoe UI", Arial, sans-serif; }
+    .topbar { background: #102d46; color: #fff; }
+    .topbar .eyebrow { color: #a9cadc; font-size: .75rem; font-weight: 700; letter-spacing: .08em; }
+    .page-title { max-width: 850px; font-size: clamp(1.65rem, 4vw, 2.5rem); font-weight: 700; }
+    .dashboard { max-width: 1440px; }
+    .search-panel, .side-panel { background: var(--surface); border: 1px solid var(--line); border-radius: .5rem; }
+    .search-panel { box-shadow: 0 8px 26px rgb(23 43 58 / 6%); }
+    .side-panel { position: sticky; top: 1rem; }
+    .accordion-item { border-color: var(--line); }
+    .accordion-button { color: var(--ink); font-weight: 600; }
+    .accordion-button:not(.collapsed) { color: #0b5ed7; background: #eef5fc; box-shadow: none; }
+    .month-card { overflow: hidden; border-color: var(--line); border-radius: .5rem; }
+    .month-card .card-header { padding: .9rem 1.15rem; }
+    .release-row { gap: 1rem; }
+    .release-date { min-width: 8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .release-title { color: var(--ink); font-weight: 600; }
+    .empty-state { border: 1px dashed #bdcbd7; border-radius: .5rem; color: var(--muted); }
+    .form-text { color: var(--muted); }
+    @media (max-width: 767.98px) {
+      .side-panel { position: static; }
+      .release-row { align-items: flex-start !important; flex-wrap: wrap; }
+      .release-date { min-width: 0; width: 100%; }
+      .release-action { margin-left: auto; }
     }
   </style>
 </head>
-<body>
-  <header>
-    <p>PLATAFORMA DE SUSCRIPCIONES</p>
-    <h1>Calendario de lanzamientos</h1>
+<body class="bg-light">
+  <header class="topbar py-4 py-lg-5">
+    <div class="container dashboard">
+      <p class="eyebrow mb-2">PLATAFORMA DE SUSCRIPCIONES</p>
+      <h1 class="page-title mb-0">📅 Calendario Colectivo de Lanzamientos y Suscripciones</h1>
+    </div>
   </header>
-  <main>
-    <form id="filter-form">
-      <input id="email" type="email" placeholder="Filtrar por correo suscrito" aria-label="Correo electrónico">
-      <button type="submit">Consultar calendario</button>
-    </form>
-    <div id="calendar" aria-live="polite"><p id="message">Cargando lanzamientos...</p></div>
-  </main>
-  <script>
-    const calendar = document.querySelector("#calendar");
-    const form = document.querySelector("#filter-form");
-    const emailInput = document.querySelector("#email");
 
-    async function loadCalendar(email = "") {
-      calendar.replaceChildren();
-      const message = document.createElement("p");
-      message.id = "message";
-      message.textContent = "Cargando lanzamientos...";
-      calendar.append(message);
+  <main class="container dashboard py-4 py-lg-5">
+    <section class="search-panel p-3 p-md-4 mb-4" aria-label="Buscar calendario personal">
+      <form id="calendarForm" class="row g-2 align-items-end">
+        <div class="col-12 col-md">
+          <label for="userEmail" class="form-label fw-semibold">Correo del suscriptor</label>
+          <input id="userEmail" name="email" type="email" class="form-control form-control-lg" placeholder="nombre@ejemplo.com" autocomplete="email">
+        </div>
+        <div class="col-12 col-md-auto">
+          <button type="submit" class="btn btn-primary btn-lg w-100">Ver Mi Calendario</button>
+        </div>
+      </form>
+    </section>
+
+    <div id="feedback" class="alert d-none" role="status" aria-live="polite"></div>
+
+    <div class="row g-4 align-items-start">
+      <section class="col-12 col-lg-8 order-2 order-lg-1" aria-label="Calendario de lanzamientos">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h4 mb-0">Próximas entregas</h2>
+          <button id="refreshCalendar" type="button" class="btn btn-outline-secondary btn-sm">Actualizar</button>
+        </div>
+        <div id="calendar" aria-live="polite" aria-busy="true">
+          <div class="text-secondary py-4">Cargando calendario...</div>
+        </div>
+      </section>
+
+      <aside class="col-12 col-lg-4 order-1 order-lg-2">
+        <div class="side-panel p-3 p-md-4">
+          <h2 class="h5 mb-3">Acciones de prueba</h2>
+          <div class="accordion" id="testForms">
+            <div class="accordion-item">
+              <h3 class="accordion-header" id="deliveryHeading">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#deliveryPanel" aria-expanded="true" aria-controls="deliveryPanel">Añadir entrega</button>
+              </h3>
+              <div id="deliveryPanel" class="accordion-collapse collapse show" aria-labelledby="deliveryHeading" data-bs-parent="#testForms">
+                <div class="accordion-body">
+                  <form id="deliveryForm" class="vstack gap-3">
+                    <div>
+                      <label for="collectionName" class="form-label">Nombre de colección</label>
+                      <input id="collectionName" name="collectionName" class="form-control" required maxlength="200" placeholder="Nombre exacto de la colección">
+                      <div class="form-text">Debe coincidir con una colección existente.</div>
+                    </div>
+                    <div>
+                      <label for="deliveryNumber" class="form-label">Número de entrega</label>
+                      <input id="deliveryNumber" name="deliveryNumber" type="number" class="form-control" min="1" step="1" required>
+                    </div>
+                    <div>
+                      <label for="deliveryTitle" class="form-label">Título</label>
+                      <input id="deliveryTitle" name="deliveryTitle" class="form-control" required maxlength="250">
+                    </div>
+                    <div>
+                      <label for="releaseDate" class="form-label">Fecha de lanzamiento</label>
+                      <input id="releaseDate" name="releaseDate" type="date" class="form-control" required>
+                    </div>
+                    <button class="btn btn-dark" type="submit">Guardar entrega</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <div class="accordion-item">
+              <h3 class="accordion-header" id="subscriptionHeading">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#subscriptionPanel" aria-expanded="false" aria-controls="subscriptionPanel">Suscribirse a una colección</button>
+              </h3>
+              <div id="subscriptionPanel" class="accordion-collapse collapse" aria-labelledby="subscriptionHeading" data-bs-parent="#testForms">
+                <div class="accordion-body">
+                  <form id="subscriptionForm" class="vstack gap-3">
+                    <div>
+                      <label for="subscriptionCollectionId" class="form-label">ID de colección</label>
+                      <input id="subscriptionCollectionId" name="coleccion_id" type="number" class="form-control" min="1" step="1" required>
+                    </div>
+                    <div>
+                      <label for="subscriptionEmail" class="form-label">Correo del usuario</label>
+                      <input id="subscriptionEmail" name="user_email" type="email" class="form-control" required autocomplete="email" placeholder="nombre@ejemplo.com">
+                    </div>
+                    <button class="btn btn-success" type="submit">Crear suscripción</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+  <script>
+    const calendarElement = document.querySelector("#calendar");
+    const emailInput = document.querySelector("#userEmail");
+    const feedbackElement = document.querySelector("#feedback");
+    const subscriptionPanel = document.querySelector("#subscriptionPanel");
+
+    function showFeedback(message, isError = false) {
+      feedbackElement.textContent = message;
+      feedbackElement.className = `alert ${isError ? "alert-danger" : "alert-success"}`;
+    }
+
+    async function getErrorMessage(response) {
+      try {
+        const body = await response.json();
+        if (Array.isArray(body.detail)) return body.detail.map((item) => item.msg).join(" ");
+        return body.detail || body.message || `Error HTTP ${response.status}`;
+      } catch {
+        return `Error HTTP ${response.status}`;
+      }
+    }
+
+    async function loadCalendar(email = emailInput.value.trim()) {
+      calendarElement.setAttribute("aria-busy", "true");
+      calendarElement.replaceChildren();
+      const loading = document.createElement("p");
+      loading.className = "text-secondary py-3";
+      loading.textContent = "Cargando calendario...";
+      calendarElement.append(loading);
 
       const query = email ? `?email=${encodeURIComponent(email)}` : "";
       try {
         const response = await fetch(`/api/calendario${query}`);
-        if (!response.ok) throw new Error("No se pudo cargar el calendario.");
+        if (!response.ok) throw new Error(await getErrorMessage(response));
         const months = await response.json();
-        calendar.replaceChildren();
+        calendarElement.replaceChildren();
+
         if (Object.keys(months).length === 0) {
-          message.textContent = "Todavía no hay lanzamientos registrados.";
-          calendar.append(message);
+          const empty = document.createElement("div");
+          empty.className = "empty-state bg-white p-4 text-center";
+          empty.textContent = "Todavía no hay lanzamientos registrados.";
+          calendarElement.append(empty);
           return;
         }
 
         for (const [month, releases] of Object.entries(months)) {
-          const section = document.createElement("section");
-          section.className = "month";
-          const heading = document.createElement("h2");
-          heading.textContent = month;
-          section.append(heading);
+          const monthCard = document.createElement("div");
+          monthCard.className = "card month-card mb-4 shadow-sm";
+          const monthHeader = document.createElement("div");
+          monthHeader.className = "card-header bg-primary text-white";
+          const monthTitle = document.createElement("h3");
+          monthTitle.className = "h5 mb-0";
+          monthTitle.textContent = month;
+          monthHeader.append(monthTitle);
 
+          const releaseList = document.createElement("ul");
+          releaseList.className = "list-group list-group-flush";
           for (const release of releases) {
-            const row = document.createElement("article");
-            row.className = "release";
+            const item = document.createElement("li");
+            item.className = "list-group-item d-flex align-items-center justify-content-between py-3 release-row";
+
             const date = document.createElement("time");
-            date.className = "date";
+            date.className = "release-date fw-bold";
             date.dateTime = release.fecha_lanzamiento;
-            date.textContent = new Intl.DateTimeFormat("es", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${release.fecha_lanzamiento}T00:00:00Z`));
-            const title = document.createElement("span");
-            title.className = "title";
-            title.textContent = `${release.titulo_entrega} · Entrega ${release.entrega_numero}`;
-            const status = document.createElement("span");
-            status.className = `status${release.usuario_suscrito ? " subscribed" : ""}`;
-            status.textContent = email ? (release.usuario_suscrito ? "Suscrito" : "No suscrito") : "";
-            row.append(date, title, status);
-            section.append(row);
+            date.textContent = release.fecha_lanzamiento;
+
+            const details = document.createElement("div");
+            details.className = "flex-grow-1";
+            const title = document.createElement("div");
+            title.className = "release-title";
+            title.textContent = release.titulo_entrega;
+            const collection = document.createElement("div");
+            collection.className = "small text-secondary";
+            collection.textContent = `Colección #${release.coleccion_id} · Entrega ${release.entrega_numero}`;
+            details.append(title, collection);
+
+            const action = document.createElement("div");
+            action.className = "release-action";
+            if (release.usuario_suscrito) {
+              const badge = document.createElement("span");
+              badge.className = "badge bg-success";
+              badge.textContent = "¡Suscrito!";
+              action.append(badge);
+            } else {
+              const subscribeButton = document.createElement("button");
+              subscribeButton.type = "button";
+              subscribeButton.className = "btn btn-outline-success btn-sm";
+              subscribeButton.textContent = "Suscribirme";
+              subscribeButton.addEventListener("click", () => subscribeFromCalendar(release.coleccion_id));
+              action.append(subscribeButton);
+            }
+
+            item.append(date, details, action);
+            releaseList.append(item);
           }
-          calendar.append(section);
+          monthCard.append(monthHeader, releaseList);
+          calendarElement.append(monthCard);
         }
       } catch (error) {
-        message.textContent = error.message;
-        calendar.replaceChildren(message);
+        const failure = document.createElement("div");
+        failure.className = "alert alert-danger";
+        failure.textContent = error.message || "No se pudo cargar el calendario.";
+        calendarElement.replaceChildren(failure);
+      } finally {
+        calendarElement.setAttribute("aria-busy", "false");
       }
     }
 
-    form.addEventListener("submit", (event) => {
+    async function subscribeToCollection(collectionId, email) {
+      const response = await fetch("/api/suscribir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ coleccion_id: Number(collectionId), user_email: email }),
+      });
+      if (!response.ok) throw new Error(await getErrorMessage(response));
+    }
+
+    async function subscribeFromCalendar(collectionId) {
+      const email = emailInput.value.trim();
+      if (!email) {
+        document.querySelector("#subscriptionCollectionId").value = collectionId;
+        bootstrap.Collapse.getOrCreateInstance(subscriptionPanel).show();
+        document.querySelector("#subscriptionEmail").focus();
+        showFeedback("Introduce tu correo en el formulario de suscripción para continuar.", true);
+        return;
+      }
+      try {
+        await subscribeToCollection(collectionId, email);
+        showFeedback("Suscripción creada correctamente.");
+        await loadCalendar(email);
+      } catch (error) {
+        showFeedback(error.message || "No se pudo crear la suscripción.", true);
+      }
+    }
+
+    document.querySelector("#calendarForm").addEventListener("submit", (event) => {
       event.preventDefault();
       loadCalendar(emailInput.value.trim());
+    });
+
+    document.querySelector("#refreshCalendar").addEventListener("click", () => loadCalendar());
+
+    document.querySelector("#deliveryForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const formData = new FormData(form);
+      const requestedName = formData.get("collectionName").trim();
+      try {
+        const collectionsResponse = await fetch("/api/colecciones");
+        if (!collectionsResponse.ok) throw new Error(await getErrorMessage(collectionsResponse));
+        const collections = await collectionsResponse.json();
+        const matches = collections.filter((collection) => collection.nombre.trim().toLocaleLowerCase() === requestedName.toLocaleLowerCase());
+        if (matches.length === 0) throw new Error("No existe una colección con ese nombre. Añádela primero desde la API.");
+        if (matches.length > 1) throw new Error("Hay varias colecciones con ese nombre; usa un nombre único.");
+
+        const response = await fetch("/api/lanzamientos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            coleccion_id: matches[0].id,
+            entrega_numero: Number(formData.get("deliveryNumber")),
+            titulo_entrega: formData.get("deliveryTitle").trim(),
+            fecha_lanzamiento: formData.get("releaseDate"),
+          }),
+        });
+        if (!response.ok) throw new Error(await getErrorMessage(response));
+        form.reset();
+        showFeedback("Entrega añadida correctamente.");
+        await loadCalendar();
+      } catch (error) {
+        showFeedback(error.message || "No se pudo añadir la entrega.", true);
+      }
+    });
+
+    document.querySelector("#subscriptionForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const formData = new FormData(form);
+      const email = formData.get("user_email").trim();
+      try {
+        await subscribeToCollection(formData.get("coleccion_id"), email);
+        emailInput.value = email;
+        form.reset();
+        showFeedback("Suscripción creada correctamente.");
+        await loadCalendar(email);
+      } catch (error) {
+        showFeedback(error.message || "No se pudo crear la suscripción.", true);
+      }
     });
 
     loadCalendar();
